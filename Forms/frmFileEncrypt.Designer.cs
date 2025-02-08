@@ -1,6 +1,6 @@
 ﻿namespace WinCRPY
 {
-    partial class frmMain
+    partial class frmFileEncrypt
     {
         /// <summary>
         ///  Required designer variable.
@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(frmFileEncrypt));
             grpEncript = new GroupBox();
             prgsEncryptFile = new ProgressBar();
             txtEncryptOutputFile = new TextBox();
@@ -263,7 +264,7 @@
             label3.TabIndex = 4;
             label3.Text = "Arquivo Selecionado";
             // 
-            // frmMain
+            // frmFileEncrypt
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
@@ -271,10 +272,12 @@
             Controls.Add(grpDecrypt);
             Controls.Add(grpEncript);
             FormBorderStyle = FormBorderStyle.FixedDialog;
+            Icon = (Icon)resources.GetObject("$this.Icon");
             MaximizeBox = false;
-            Name = "frmMain";
+            MinimizeBox = false;
+            Name = "frmFileEncrypt";
             StartPosition = FormStartPosition.CenterScreen;
-            Text = "Cripto Utils";
+            Text = "File Encrypt";
             grpEncript.ResumeLayout(false);
             grpEncript.PerformLayout();
             grpDecrypt.ResumeLayout(false);

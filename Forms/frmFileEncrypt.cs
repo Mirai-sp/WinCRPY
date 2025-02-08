@@ -1,9 +1,9 @@
 namespace WinCRPY
 {
-    public partial class frmMain : Form
+    public partial class frmFileEncrypt : Form
     {
         private FileEncryptor fileEncryptor;
-        public frmMain()
+        public frmFileEncrypt()
         {
             InitializeComponent();
             fileEncryptor = new FileEncryptor();
