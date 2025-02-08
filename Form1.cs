@@ -9,11 +9,6 @@ namespace WinCRPY
             fileEncryptor = new FileEncryptor();
         }
 
-        private void grpEncript_Enter(object sender, EventArgs e)
-        {
-
-        }
-
         private void btnSelectEncryptFile_Click(object sender, EventArgs e)
         {
             using (var openFileDialog = new OpenFileDialog())
@@ -28,7 +23,7 @@ namespace WinCRPY
                     txtEncryptSelectedFile.Clear();
                     txtEncryptOutputFile.Clear();
                 }
-                btnEncryptStart.Enabled = !String.IsNullOrEmpty(txtEncryptSelectedFile.Text);
+                encryptButtonsEnabled(true, !String.IsNullOrEmpty(txtEncryptSelectedFile.Text));
             }
         }
 
@@ -42,10 +37,10 @@ namespace WinCRPY
 
             using (var saveFileDialog = new SaveFileDialog())
             {
-                saveFileDialog.Filter = "Todos os tipos de arquivo|*.*";
+                saveFileDialog.Filter = "Arquivo criptografado|*.wcry";
                 if (saveFileDialog.ShowDialog() == DialogResult.OK)
                 {
-                    btnSelectdecryptFile.Enabled = false;
+                    encryptButtonsEnabled(false, false);
                     txtEncryptOutputFile.Text = saveFileDialog.FileName;
                     var progress = new Progress<double>(percent =>
                     {
@@ -54,8 +49,7 @@ namespace WinCRPY
 
                     await fileEncryptor.EncryptFileAsync(txtEncryptPassword.Text, txtEncryptSelectedFile.Text, txtEncryptOutputFile.Text, progress);
                     prgsEncryptFile.Value = 0;
-                    btnSelectEncryptFile.Enabled = true;
-                    btnEncryptStart.Enabled = !btnSelectEncryptFile.Enabled;
+                    encryptButtonsEnabled(true, false);
                     MessageBox.Show("Arquivo criptografado com sucesso!");
                 }
             }
@@ -65,6 +59,7 @@ namespace WinCRPY
         {
             using (var openFileDialog = new OpenFileDialog())
             {
+                openFileDialog.Filter = "Arquivo criptografado|*.wcry";
                 if (openFileDialog.ShowDialog() == DialogResult.OK)
                 {
                     txtDecryptSelectedFile.Text = openFileDialog.FileName;
@@ -74,37 +69,61 @@ namespace WinCRPY
                     txtDecryptSelectedFile.Clear();
                     txtDecryptOutputFile.Clear();
                 }
-                btnDecryptStart.Enabled = !String.IsNullOrEmpty(txtDecryptSelectedFile.Text);
+                decryptButtonsEnabled(true, !String.IsNullOrEmpty(txtDecryptSelectedFile.Text));
             }
         }
 
         private async void btnDecryptStart_Click(object sender, EventArgs e)
         {
-            if (string.IsNullOrEmpty(txtDecryptSelectedFile.Text) || string.IsNullOrEmpty(txtDecryptPassword.Text))
-            {
-                MessageBox.Show("Por favor, selecione um arquivo e insira uma senha.");
-                return;
-            }
+            string tempOutputFilePath = Path.GetTempFileName(); // Nome temporário para o arquivo descriptografado
 
-            using (var saveFileDialog = new SaveFileDialog())
+            using (FolderBrowserDialog folderDialog = new FolderBrowserDialog())
             {
-                if (saveFileDialog.ShowDialog() == DialogResult.OK)
+                if (folderDialog.ShowDialog() == DialogResult.OK)
                 {
-                    btnSelectdecryptFile.Enabled = false;
-                    txtDecryptOutputFile.Text = saveFileDialog.FileName;
+                    decryptButtonsEnabled(false, false);
                     var progress = new Progress<double>(percent =>
                     {
                         prgsDecryptFile.Value = (int)(percent * 100);
                     });
 
-                    await fileEncryptor.DecryptFileAsync(txtDecryptPassword.Text, txtDecryptSelectedFile.Text, txtDecryptOutputFile.Text, progress);
-                    prgsDecryptFile.Value = 0;
-                    btnSelectdecryptFile.Enabled = true;
-                    btnDecryptStart.Enabled = !btnSelectdecryptFile.Enabled;
-                    MessageBox.Show("Arquivo descriptografado com sucesso!");
+                    var (success, originalFileName) = await fileEncryptor.DecryptFileAsync(txtDecryptPassword.Text, txtDecryptSelectedFile.Text, tempOutputFilePath, progress);
+                    if (success)
+                    {
+                        // Caminho final para o arquivo descriptografado
+                        string outputDirectory = folderDialog.SelectedPath;
+                        string finalOutputFilePath = Path.Combine(outputDirectory, "decripted_" + originalFileName);
 
+                        // Renomeia o arquivo descriptografado
+                        File.Move(tempOutputFilePath, finalOutputFilePath);
+
+                        prgsDecryptFile.Value = 0;
+                        decryptButtonsEnabled(true, true);
+                        MessageBox.Show($"Arquivo descriptografado com sucesso!");// Nome original: {originalFileName}\nSalvo como: {finalOutputFilePath}");
+                    }
+                    else
+                    {
+                        // Remove o arquivo temporário em caso de falha
+                        File.Delete(tempOutputFilePath);
+
+                        prgsDecryptFile.Value = 0;
+                        decryptButtonsEnabled(true, true);
+                        MessageBox.Show("Senha incorreta ou erro ao descriptografar o arquivo.");
+                    }
                 }
             }
+        }
+
+        private void encryptButtonsEnabled(bool enableSelectFile, bool enableStart)
+        {
+            btnSelectEncryptFile.Enabled = enableSelectFile;
+            btnEncryptStart.Enabled = enableStart;
+        }
+
+        private void decryptButtonsEnabled(bool enableSelectFile, bool enableStart)
+        {
+            btnSelectdecryptFile.Enabled = enableSelectFile;
+            btnDecryptStart.Enabled = enableStart;
         }
     }
 }

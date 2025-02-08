@@ -39,6 +39,7 @@
             btnEncryptStart = new Button();
             btnSelectEncryptFile = new Button();
             grpDecrypt = new GroupBox();
+            prgsDecryptFile = new ProgressBar();
             txtDecryptOutputFile = new TextBox();
             label6 = new Label();
             txtDecryptPassword = new TextBox();
@@ -47,8 +48,6 @@
             btnSelectdecryptFile = new Button();
             txtDecryptSelectedFile = new TextBox();
             label3 = new Label();
-            openFileDialog1 = new OpenFileDialog();
-            prgsDecryptFile = new ProgressBar();
             grpEncript.SuspendLayout();
             grpDecrypt.SuspendLayout();
             SuspendLayout();
@@ -72,7 +71,6 @@
             grpEncript.TabIndex = 2;
             grpEncript.TabStop = false;
             grpEncript.Text = "Encrypt";
-            grpEncript.Enter += grpEncript_Enter;
             // 
             // prgsEncryptFile
             // 
@@ -179,6 +177,14 @@
             grpDecrypt.TabStop = false;
             grpDecrypt.Text = "Decrypt";
             // 
+            // prgsDecryptFile
+            // 
+            prgsDecryptFile.Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+            prgsDecryptFile.Location = new Point(6, 166);
+            prgsDecryptFile.Name = "prgsDecryptFile";
+            prgsDecryptFile.Size = new Size(539, 23);
+            prgsDecryptFile.TabIndex = 12;
+            // 
             // txtDecryptOutputFile
             // 
             txtDecryptOutputFile.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
@@ -257,18 +263,6 @@
             label3.TabIndex = 4;
             label3.Text = "Arquivo Selecionado";
             // 
-            // openFileDialog1
-            // 
-            openFileDialog1.FileName = "openFileDialog1";
-            // 
-            // prgsDecryptFile
-            // 
-            prgsDecryptFile.Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-            prgsDecryptFile.Location = new Point(6, 166);
-            prgsDecryptFile.Name = "prgsDecryptFile";
-            prgsDecryptFile.Size = new Size(539, 23);
-            prgsDecryptFile.TabIndex = 12;
-            // 
             // frmMain
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
@@ -301,7 +295,6 @@
         private Button btnSelectdecryptFile;
         private TextBox txtDecryptSelectedFile;
         private Label label3;
-        private OpenFileDialog openFileDialog1;
         private TextBox txtDecryptPassword;
         private Label label4;
         private TextBox txtEncryptOutputFile;
