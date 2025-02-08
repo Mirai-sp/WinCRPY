@@ -1,0 +1,24 @@
+﻿public class Program
+{
+    public static async Task Main(string[] args)
+    {
+        string password = "YourPassword";
+        string inputFilePath = "path/to/your/input/file";
+        string encryptedFilePath = "path/to/your/encrypted/file";
+        string decryptedFilePath = "path/to/your/decrypted/file";
+        
+        var encryptor = new FileEncryptor();
+
+        var progress = new Progress<double>(percent => 
+        {
+            Console.WriteLine($"{percent:P2} complete.");
+        });
+
+        Console.WriteLine("Encrypting file...");
+        await encryptor.EncryptFileAsync(password, inputFilePath, encryptedFilePath, progress);
+
+        Console.WriteLine("Decrypting file...");
+        await encryptor.DecryptFileAsync(password, encryptedFilePath, decryptedFilePath, progress);
+
+        Console.WriteLine("Done!");
+    }
