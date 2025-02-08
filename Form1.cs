@@ -94,8 +94,20 @@ namespace WinCRPY
                         string outputDirectory = folderDialog.SelectedPath;
                         string finalOutputFilePath = Path.Combine(outputDirectory, "decripted_" + originalFileName);
 
+                        // Verifica se o arquivo já existe
+                        if (File.Exists(finalOutputFilePath))
+                        {
+                            var result = MessageBox.Show($"O arquivo 'decripted_{originalFileName}' já existe. Deseja substituí-lo?", "Arquivo Existente", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                            if (result == DialogResult.No)
+                            {
+                                // Remove o arquivo temporário e retorna
+                                File.Delete(tempOutputFilePath);
+                                return;
+                            }
+                        }
+
                         // Renomeia o arquivo descriptografado
-                        File.Move(tempOutputFilePath, finalOutputFilePath);
+                        File.Move(tempOutputFilePath, finalOutputFilePath, true);
 
                         prgsDecryptFile.Value = 0;
                         decryptButtonsEnabled(true, true);
