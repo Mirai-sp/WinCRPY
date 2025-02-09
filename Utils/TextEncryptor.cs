@@ -10,9 +10,11 @@ public class TextEncryptor
     public string EncryptText(string password, string plaintext)
     {
         byte[] salt = GenerateSalt();
-        var pbkdf2 = new Rfc2898DeriveBytes(password, salt, Iterations, HashAlgorithmName.SHA256);
+        var pbkdf2 = new Rfc2898DeriveBytes(password, salt, Iterations, HashAlgorithmName.SHA512);
         byte[] key = pbkdf2.GetBytes(KeySize / 8);
-        byte[] iv = new byte[BlockSize / 8];
+
+        // Gerar IV aleatório
+        byte[] iv = GenerateIV();
 
         using (Aes aes = Aes.Create())
         {
@@ -22,8 +24,9 @@ public class TextEncryptor
 
             using (MemoryStream ms = new MemoryStream())
             {
-                // Write salt to the memory stream
+                // Write salt and IV to the memory stream
                 ms.Write(salt, 0, salt.Length);
+                ms.Write(iv, 0, iv.Length);
 
                 using (CryptoStream cs = new CryptoStream(ms, aes.CreateEncryptor(), CryptoStreamMode.Write))
                 {
@@ -48,9 +51,12 @@ public class TextEncryptor
             byte[] salt = new byte[16];
             ms.Read(salt, 0, salt.Length);
 
-            var pbkdf2 = new Rfc2898DeriveBytes(password, salt, Iterations, HashAlgorithmName.SHA256);
+            var pbkdf2 = new Rfc2898DeriveBytes(password, salt, Iterations, HashAlgorithmName.SHA512);
             byte[] key = pbkdf2.GetBytes(KeySize / 8);
+
+            // Read IV from the memory stream
             byte[] iv = new byte[BlockSize / 8];
+            ms.Read(iv, 0, iv.Length);
 
             using (Aes aes = Aes.Create())
             {
@@ -77,5 +83,15 @@ public class TextEncryptor
             rng.GetBytes(salt);
         }
         return salt;
+    }
+
+    private byte[] GenerateIV()
+    {
+        byte[] iv = new byte[BlockSize / 8]; // IV size
+        using (var rng = RandomNumberGenerator.Create())
+        {
+            rng.GetBytes(iv);
+        }
+        return iv;
     }
 }

@@ -10,46 +10,55 @@ public class FileEncryptor
     public async Task EncryptFileAsync(string password, string inputFilePath, string outputFilePath, IProgress<double> progress)
     {
         byte[] salt = GenerateSalt();
-        var pbkdf2 = new Rfc2898DeriveBytes(password, salt, Iterations, HashAlgorithmName.SHA256);
+        var pbkdf2 = new Rfc2898DeriveBytes(password, salt, Iterations, HashAlgorithmName.SHA512);
         byte[] key = pbkdf2.GetBytes(KeySize / 8);
-        byte[] iv = new byte[BlockSize / 8];
+        byte[] iv = GenerateIV();
 
         FileInfo fileInfo = new FileInfo(inputFilePath);
         string metadata = $"{fileInfo.Name}";
 
-        using (FileStream inputFileStream = new FileStream(inputFilePath, FileMode.Open))
-        using (FileStream outputFileStream = new FileStream(outputFilePath, FileMode.Create))
+        try
         {
-            // Write metadata length and metadata to the output file
-            byte[] metadataBytes = Encoding.UTF8.GetBytes(metadata);
-            byte[] metadataLength = BitConverter.GetBytes(metadataBytes.Length);
-            await outputFileStream.WriteAsync(metadataLength, 0, metadataLength.Length);
-            await outputFileStream.WriteAsync(metadataBytes, 0, metadataBytes.Length);
-
-            // Write salt to the output file
-            await outputFileStream.WriteAsync(salt, 0, salt.Length);
-
-            using (Aes aes = Aes.Create())
+            using (FileStream inputFileStream = new FileStream(inputFilePath, FileMode.Open, FileAccess.Read))
+            using (FileStream outputFileStream = new FileStream(outputFilePath, FileMode.Create, FileAccess.Write))
             {
-                aes.Key = key;
-                aes.IV = iv;
-                aes.Padding = PaddingMode.PKCS7;
+                // Write metadata length and metadata to the output file
+                byte[] metadataBytes = Encoding.UTF8.GetBytes(metadata);
+                byte[] metadataLength = BitConverter.GetBytes(metadataBytes.Length);
+                await outputFileStream.WriteAsync(metadataLength, 0, metadataLength.Length);
+                await outputFileStream.WriteAsync(metadataBytes, 0, metadataBytes.Length);
 
-                using (CryptoStream cryptoStream = new CryptoStream(outputFileStream, aes.CreateEncryptor(), CryptoStreamMode.Write))
+                // Write salt and IV to the output file
+                await outputFileStream.WriteAsync(salt, 0, salt.Length);
+                await outputFileStream.WriteAsync(iv, 0, iv.Length);
+
+                using (Aes aes = Aes.Create())
                 {
-                    byte[] buffer = new byte[1048576]; // 1MB buffer
-                    int bytesRead;
-                    double totalBytesRead = 0;
-                    double totalBytes = inputFileStream.Length;
+                    aes.Key = key;
+                    aes.IV = iv;
+                    aes.Padding = PaddingMode.PKCS7;
 
-                    while ((bytesRead = await inputFileStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                    using (CryptoStream cryptoStream = new CryptoStream(outputFileStream, aes.CreateEncryptor(), CryptoStreamMode.Write))
                     {
-                        await cryptoStream.WriteAsync(buffer, 0, bytesRead);
-                        totalBytesRead += bytesRead;
-                        progress.Report(totalBytesRead / totalBytes);
+                        byte[] buffer = new byte[1048576]; // 1MB buffer
+                        int bytesRead;
+                        double totalBytesRead = 0;
+                        double totalBytes = inputFileStream.Length;
+
+                        while ((bytesRead = await inputFileStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                        {
+                            await cryptoStream.WriteAsync(buffer, 0, bytesRead);
+                            totalBytesRead += bytesRead;
+                            progress?.Report(totalBytesRead / totalBytes);
+                        }
                     }
                 }
             }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Encryption failed: " + ex.Message);
+            throw;
         }
     }
 
@@ -57,7 +66,7 @@ public class FileEncryptor
     {
         try
         {
-            using (FileStream inputFileStream = new FileStream(inputFilePath, FileMode.Open))
+            using (FileStream inputFileStream = new FileStream(inputFilePath, FileMode.Open, FileAccess.Read))
             {
                 // Read metadata length from the input file
                 byte[] metadataLengthBytes = new byte[4];
@@ -70,15 +79,16 @@ public class FileEncryptor
                 string metadata = Encoding.UTF8.GetString(metadataBytes);
                 string originalFileName = metadata.Split(';')[0];
 
-                // Read salt from the input file
+                // Read salt and IV from the input file
                 byte[] salt = new byte[16]; // The salt is 16 bytes
                 await inputFileStream.ReadAsync(salt, 0, salt.Length);
+                byte[] iv = new byte[BlockSize / 8]; // The IV is 16 bytes
+                await inputFileStream.ReadAsync(iv, 0, iv.Length);
 
-                var pbkdf2 = new Rfc2898DeriveBytes(password, salt, Iterations, HashAlgorithmName.SHA256);
+                var pbkdf2 = new Rfc2898DeriveBytes(password, salt, Iterations, HashAlgorithmName.SHA512); // Usando SHA-512
                 byte[] key = pbkdf2.GetBytes(KeySize / 8);
-                byte[] iv = new byte[BlockSize / 8];
 
-                using (FileStream outputFileStream = new FileStream(outputFilePath, FileMode.Create))
+                using (FileStream outputFileStream = new FileStream(outputFilePath, FileMode.Create, FileAccess.Write))
                 using (Aes aes = Aes.Create())
                 {
                     aes.Key = key;
@@ -90,13 +100,13 @@ public class FileEncryptor
                         byte[] buffer = new byte[1048576]; // 1MB buffer
                         int bytesRead;
                         double totalBytesRead = 0;
-                        double totalBytes = inputFileStream.Length - metadataLengthBytes.Length - metadataBytes.Length - salt.Length;
+                        double totalBytes = inputFileStream.Length - metadataLengthBytes.Length - metadataBytes.Length - salt.Length - iv.Length;
 
                         while ((bytesRead = await cryptoStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
                         {
                             await outputFileStream.WriteAsync(buffer, 0, bytesRead);
                             totalBytesRead += bytesRead;
-                            progress.Report(totalBytesRead / totalBytes);
+                            progress?.Report(totalBytesRead / totalBytes);
                         }
                     }
                 }
@@ -105,7 +115,12 @@ public class FileEncryptor
         }
         catch (CryptographicException)
         {
-            // Senha incorreta ou outro erro de criptografia
+            Console.WriteLine("Decryption failed: incorrect password or data corruption");
+            return (false, null);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Decryption failed: " + ex.Message);
             return (false, null);
         }
     }
@@ -118,5 +133,15 @@ public class FileEncryptor
             rng.GetBytes(salt);
         }
         return salt;
+    }
+
+    private byte[] GenerateIV()
+    {
+        byte[] iv = new byte[BlockSize / 8]; // IV size
+        using (var rng = RandomNumberGenerator.Create())
+        {
+            rng.GetBytes(iv);
+        }
+        return iv;
     }
 }
